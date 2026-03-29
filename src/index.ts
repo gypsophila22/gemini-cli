@@ -1,45 +1,18 @@
-import { GoogleGenerativeAI, type Content } from '@google/generative-ai';
+import { GoogleGenerativeAI, type Tool } from '@google/generative-ai';
 import * as dotenv from 'dotenv';
-import fsp from 'fs/promises';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import ora from 'ora';
-import type { Tool } from '@google/generative-ai';
+import {
+  getFilename,
+  loadHistory,
+  hasRenderedHtml,
+  saveHistory,
+  readTargetFile,
+  HISTORY_FILE,
+} from './utils.js';
 
-/** ESM/CJS 환경에 구애받지 않는 경로 계산 함수 */
-const getFilename = (): string => {
-  try {
-    // ESM 환경 (tsx 실행 시)
-    return fileURLToPath(import.meta.url);
-  } catch {
-    // CJS 환경 (빌드된 .cjs 실행 시)
-    return __filename;
-  }
-};
-
-const __filename = getFilename();
-const __dirname = path.dirname(__filename);
-
-const envPath = fs.existsSync(path.join(__dirname, '.env'))
-  ? path.join(__dirname, '.env')
-  : path.join(__dirname, '..', '.env');
-
-dotenv.config({ path: envPath });
-
-// ---------------------------------------------------------
-// 1. Configuration
-// ---------------------------------------------------------
-const HISTORY_FILE = path.join(__dirname, '.history.json');
-
-// 100개의 메시지(약 50쌍의 대화) 유지
-const MAX_HISTORY = 100;
-
-interface HistoryData {
-  lastTimestamp: number;
-  history: Content[]; // 대화 내역 저장을 위한 배열 추가
-}
+import type { ExtendedMetadata } from './types.js';
+dotenv.config();
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || process.env.API_KEY;
 if (!GOOGLE_API_KEY) {
@@ -51,57 +24,6 @@ if (!GOOGLE_API_KEY) {
 
 const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
 
-// ---------------------------------------------------------
-// 2. Utility Functions
-// ---------------------------------------------------------
-
-/** 히스토리 데이터 로드 */
-async function loadHistory(): Promise<HistoryData> {
-  const defaultData: HistoryData = { lastTimestamp: Date.now(), history: [] };
-
-  if (!fs.existsSync(HISTORY_FILE)) return defaultData;
-
-  try {
-    const rawData = await fsp.readFile(HISTORY_FILE, 'utf-8');
-    return JSON.parse(rawData);
-  } catch (error) {
-    console.warn(chalk.yellow(`⚠️ 기록 파일 읽기 실패. 새 대화를 시작합니다.`));
-    return defaultData;
-  }
-}
-
-/** 히스토리 데이터 저장 (Sliding Window 적용) */
-async function saveHistory(history: Content[]): Promise<void> {
-  try {
-    // 최근 100개만 유지 (FIFO)
-    const slicedHistory = history.slice(-MAX_HISTORY);
-    const data: HistoryData = {
-      lastTimestamp: Date.now(),
-      history: slicedHistory,
-    };
-    await fsp.writeFile(HISTORY_FILE, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (error) {
-    console.error(
-      chalk.red(`\n❌ 기록 저장 실패: ${(error as Error).message}`),
-    );
-  }
-}
-
-/** 파일 읽기 유틸리티 */
-async function readTargetFile(fileName: string): Promise<string | null> {
-  const filePath = path.resolve(process.cwd(), fileName);
-  try {
-    if (!fs.existsSync(filePath)) throw new Error('파일이 존재하지 않습니다.');
-    return await fsp.readFile(filePath, 'utf-8');
-  } catch (error) {
-    console.warn(chalk.yellow(`\n⚠️ 파일 읽기 실패: ${fileName}`));
-    return null;
-  }
-}
-
-// ---------------------------------------------------------
-// 3. Main Logic
-// ---------------------------------------------------------
 async function run() {
   const userPrompt = process.argv[2];
   const targetFileName = process.argv[3];
@@ -112,7 +34,7 @@ async function run() {
   }
 
   // A. 이전 기록 로드 (히스토리 포함)
-  const historyData = await loadHistory();
+  const historyData = await loadHistory(HISTORY_FILE);
   const diffMin = Math.floor(
     (Date.now() - historyData.lastTimestamp) / (1000 * 60),
   );
@@ -133,7 +55,15 @@ async function run() {
     - 현재 일시: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
     - 사용자 이름: 심하원
     - ${timeContext}
-    - 항상 한국어로 답변하며, 제공된 대화 기록(history)을 바탕으로 맥락을 유지하세요.
+    [중요 수칙]
+    1. **사실 확인 최우선**: 실시간 뉴스, 시사, 역사적 사건에 대해서는 본인의 기억에 의존하지 말고 반드시 'googleSearch' 도구를 호출하여 확인하세요.
+    2. **환각 방지**: 확실하지 않은 정보를 사실인 것처럼 지어내지 마세요. 검색 결과가 없으면 솔직하게 "최신 정보를 찾을 수 없다"고 답변하세요.
+    3. **출처 명시**: 검색을 수행했다면 답변 끝에 반드시 출처를 포함하세요.
+    4. 모든 답변은 한국어로 명확하게 작성하세요.
+    [검색 최적화 지침]
+    1. 검색을 수행할 때는 문장 전체를 던지지 말고, **'2026년 이란 전쟁 현황', '이란 공습 뉴스'**와 같이 핵심 키워드 위주로 검색어를 생성하세요.
+    2. 검색 결과 중에서 '예측(Prediction)', '시나리오(Scenario)', '가상(Fiction)' 등의 단어가 포함된 소스는 제외하고, **주요 언론사의 실시간 보도**만 신뢰하세요.
+    3. 현재 발생 중인 사건에 대해 "이미 알고 있다"고 자만하지 말고, 검색 결과의 날짜와 내용을 대조하여 팩트 체크를 먼저 하세요.
   `;
 
   const modelsToTry = ['gemini-2.5-pro', 'gemini-2.5-flash'];
@@ -164,7 +94,9 @@ async function run() {
       // 1. 답변과 메타데이터 먼저 확보
       const result = await chat.sendMessage(finalPrompt);
       const answer = result.response.text();
-      const metadata = result.response.candidates?.[0]?.groundingMetadata;
+      const metadata = result.response.candidates?.[0]?.groundingMetadata as
+        | ExtendedMetadata
+        | undefined;
 
       // 2. 답변을 받았으니 즉시 스피너 중지
       spinner.stop();
@@ -176,7 +108,32 @@ async function run() {
       console.log(chalk.green.bold(`📝 AI 답변 (${modelName}):`));
       console.log(answer);
 
-      // 4. 검색 출처가 있다면 답변 아래에 이어서 출력
+      // 4. AI가 실제로 검색한 키워드 출력
+      if (metadata) {
+        let displayQueries: string[] = [];
+
+        // 실제 검색 쿼리가 있는지 먼저 확인
+        if (metadata.webSearchQueries && metadata.webSearchQueries.length > 0) {
+          displayQueries = metadata.webSearchQueries.slice(0, 3);
+        }
+        // 쿼리가 없다면 문장에서 추출 (Fallback)
+        else if (metadata.groundingSupports) {
+          displayQueries = metadata.groundingSupports
+            .map((s) => s.segment?.text?.split(' ').slice(0, 3).join(' '))
+            .filter((text): text is string => !!text) // null/undefined 제거 및 타입 가드
+            .map((text) =>
+              text.length > 20 ? text.substring(0, 20) + '...' : text,
+            )
+            .slice(0, 3);
+        }
+
+        if (displayQueries.length > 0) {
+          console.log(chalk.magenta.bold('\n🔍 AI 검색 키워드:'));
+          console.log(chalk.gray(`   > ${displayQueries.join(' / ')}`));
+        }
+      }
+
+      // 5. 검색 출처가 있다면 답변 아래에 이어서 출력
       if (metadata?.groundingChunks && metadata.groundingChunks.length > 0) {
         console.log(chalk.blue.bold('\n🔗 참고 출처:'));
 
@@ -195,6 +152,12 @@ async function run() {
               chalk.cyan.underline(uri),
           );
         });
+      } else if (metadata?.searchEntryPoint) {
+        const entryPoint =
+          result.response.candidates?.[0]?.groundingMetadata?.searchEntryPoint;
+        if (hasRenderedHtml(entryPoint)) {
+          console.log(chalk.blue.bold('\n🔎 Google Search 결과가 존재합니다.'));
+        }
       }
 
       console.log(
