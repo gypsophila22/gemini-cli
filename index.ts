@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 
-import { GoogleGenerativeAI, type Content } from '@google/generative-ai'; // Content 타입 추가
+import { GoogleGenerativeAI, type Content } from '@google/generative-ai';
 import * as dotenv from 'dotenv';
 import fsp from 'fs/promises';
 import fs from 'fs';
@@ -8,12 +8,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import ora from 'ora';
+import type { Tool } from '@google/generative-ai';
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const HISTORY_FILE = path.join(__dirname, '.history.json'); // 이름 변경: .last_run.json -> .history.json
+const HISTORY_FILE = path.join(__dirname, '.history.json');
 
 // 100개의 메시지(약 50쌍의 대화) 유지
 const MAX_HISTORY = 100;
@@ -131,6 +132,11 @@ async function run() {
       const model = genAI.getGenerativeModel({
         model: modelName,
         systemInstruction,
+        tools: [
+          {
+            googleSearch: {}, // 빈 객체로 설정하면 자동 모드로 작동합니다.
+          } as unknown as Tool,
+        ],
       });
 
       // B. Chat Session 시작 (기존 히스토리 주입)
