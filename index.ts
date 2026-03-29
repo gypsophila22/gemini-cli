@@ -1,5 +1,3 @@
-#!/usr/bin/env tsx
-
 import { GoogleGenerativeAI, type Content } from '@google/generative-ai';
 import * as dotenv from 'dotenv';
 import fsp from 'fs/promises';
@@ -12,8 +10,23 @@ import type { Tool } from '@google/generative-ai';
 
 dotenv.config();
 
+/** ESM/CJS 환경에 구애받지 않는 경로 계산 함수 */
+const getFilename = (): string => {
+  try {
+    // ESM 환경 (tsx 실행 시)
+    return fileURLToPath(import.meta.url);
+  } catch {
+    // CJS 환경 (빌드된 .cjs 실행 시)
+    return __filename;
+  }
+};
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// ---------------------------------------------------------
+// 1. Configuration
+// ---------------------------------------------------------
 const HISTORY_FILE = path.join(__dirname, '.history.json');
 
 // 100개의 메시지(약 50쌍의 대화) 유지
@@ -149,7 +162,7 @@ async function run() {
       const answer = result.response.text();
       const metadata = result.response.candidates?.[0]?.groundingMetadata;
 
-      // 2. 답변을 받았으니 즉시 스피너 중지 (로그 찍기 전 필수!)
+      // 2. 답변을 받았으니 즉시 스피너 중지
       spinner.stop();
 
       // 3. 메인 답변 출력
