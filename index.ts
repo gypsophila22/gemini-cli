@@ -8,8 +8,6 @@ import chalk from 'chalk';
 import ora from 'ora';
 import type { Tool } from '@google/generative-ai';
 
-dotenv.config();
-
 /** ESM/CJS 환경에 구애받지 않는 경로 계산 함수 */
 const getFilename = (): string => {
   try {
@@ -21,8 +19,14 @@ const getFilename = (): string => {
   }
 };
 
-const __filename = fileURLToPath(import.meta.url);
+const __filename = getFilename();
 const __dirname = path.dirname(__filename);
+
+const envPath = fs.existsSync(path.join(__dirname, '.env'))
+  ? path.join(__dirname, '.env')
+  : path.join(__dirname, '..', '.env');
+
+dotenv.config({ path: envPath });
 
 // ---------------------------------------------------------
 // 1. Configuration
