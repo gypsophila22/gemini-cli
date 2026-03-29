@@ -144,16 +144,42 @@ async function run() {
         history: historyData.history,
       });
 
+      // 1. 답변과 메타데이터 먼저 확보
       const result = await chat.sendMessage(finalPrompt);
       const answer = result.response.text();
+      const metadata = result.response.candidates?.[0]?.groundingMetadata;
 
+      // 2. 답변을 받았으니 즉시 스피너 중지 (로그 찍기 전 필수!)
       spinner.stop();
 
+      // 3. 메인 답변 출력
       console.log(
         chalk.gray('--------------------------------------------------'),
       );
       console.log(chalk.green.bold(`📝 AI 답변 (${modelName}):`));
       console.log(answer);
+
+      // 4. 검색 출처가 있다면 답변 아래에 이어서 출력
+      if (metadata?.groundingChunks && metadata.groundingChunks.length > 0) {
+        console.log(chalk.blue.bold('\n🔗 참고 출처:'));
+
+        const sourceMap = new Map();
+        metadata.groundingChunks.forEach((chunk: any) => {
+          if (chunk.web?.uri) {
+            sourceMap.set(chunk.web.uri, chunk.web.title || '출처 제목 없음');
+          }
+        });
+
+        Array.from(sourceMap.entries()).forEach(([uri, title], index) => {
+          console.log(
+            chalk.gray(`  [${index + 1}] `) +
+              chalk.white(title) +
+              chalk.gray(' - ') +
+              chalk.cyan.underline(uri),
+          );
+        });
+      }
+
       console.log(
         chalk.gray('--------------------------------------------------'),
       );
