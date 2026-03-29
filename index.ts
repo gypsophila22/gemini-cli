@@ -67,7 +67,7 @@ async function run() {
   // C. Input Validation (사용자 입력 검증)
   const prompt = process.argv[2];
   if (!prompt || prompt.trim() === '') {
-    console.error('질문이 없습니다. 질문을 입력해주세요. 예시: ask "안녕?"');
+    console.error('질문이 없습니다. 질문을 입력해주세요. 💡예시: ask "안녕?"');
     return;
   }
 
