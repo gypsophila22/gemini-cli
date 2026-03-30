@@ -68,7 +68,7 @@ async function run() {
     4. 사용자가 '다시 검색하라'고 할 때는 이전 기록보다 이후 검색 결과를 우선하세요.
   `;
 
-  const modelsToTry = ['gemini-2.5-pro', 'gemini-2.5-flash'];
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
   let success = false;
 
   const spinner = ora({
