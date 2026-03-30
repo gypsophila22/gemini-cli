@@ -1,16 +1,17 @@
-# 🚀 Gemini CLI Assistant
+# 🚀 Gemini CLI Assistant (V1.0)
 
-> **Google Gemini API를 활용한 터미널 기반 인공지능 백엔드 개발 비서**
-> 단순한 API 호출을 넘어, 마지막 대화 시점을 기억하고 현재 맥락(Context)을 이해하는 똑똑한 CLI 도구입니다.
+> **실시간 검색과 대화 맥락을 기억하는 프로페셔널 Node.js 백엔드 개발 비서**
+> 구글 검색을 통한 팩트 체크와 파일 분석 기능이 탑재된 크로스 플랫폼(Windows/Linux) 터미널 도구입니다.
 
 ---
 
 ## ✨ Key Features
 
-- **Context-Aware Interactions**: 마지막 질문으로부터 경과된 시간을 계산하여 대화의 흐름을 조절합니다.
-- **Developer Persona**: Node.js 백엔드 전문가 페르소나가 탑재되어 코드 리뷰 및 기술 질의에 특화되어 있습니다.
-- **Global Access**: `npm link`를 통해 어느 디렉토리에서든 `ask` 명령어로 즉시 호출 가능합니다.
-- **Modern Tech Stack**: TypeScript, ESM, `tsx`를 사용한 최신 Node.js 환경에서 구축되었습니다.
+- **🌐 Google Search Grounding**: 최신 정보가 필요할 때 AI가 자동으로 구글 검색을 수행하고 출처를 제시합니다.
+- **🧠 Persistent Chat History**: `.history.json`을 통해 대화 맥락을 유지하며, 마지막 대화 시점으로부터의 경과 시간을 인지합니다.
+- **📄 File Context Analysis**: 특정 파일의 내용을 질문과 함께 전달하여 즉각적인 코드 리뷰 및 로직 분석이 가능합니다.
+- **⚡ High Performance**: `esbuild` 번들링을 통해 즉각적인 실행 속도를 보장합니다.
+- **🛡️ Cross-Platform Stability**: ESM/CJS 호환성 로직을 적용하여 Windows PowerShell 및 Linux 환경에서 모두 안정적으로 작동합니다.
 
 ---
 
@@ -18,16 +19,14 @@
 
 - **Runtime**: Node.js (v20+)
 - **Language**: TypeScript
-- **AI Model**: Google Gemini 2.5 Flash
-- **Tools**: `dotenv`, `tsx`, `@google/generative-ai`
+- **AI Model**: Google Gemini 2.5 Pro / Flash
+- **Bundler**: `esbuild` (Target: Node CJS)
 
 ---
 
 ## 📋 Prerequisites
 
-시작하기 전, 아래 사항이 준비되어야 합니다.
-
-1. **Node.js**: v20.19.0 이상의 버전이 설치되어 있어야 합니다.
+1. **Node.js**: v20.19.0 이상의 버전이 권장됩니다.
 2. **Gemini API Key**: [Google AI Studio](https://aistudio.google.com/)에서 발급받은 API 키가 필요합니다.
 
 ---
@@ -37,7 +36,7 @@
 ### 1. Repository Clone & Install
 
 ```bash
-git clone [https://github.com/](https://github.com/)[your-github-id]/gemini-cli.git
+git clone [https://github.com/gypsophila22/gemini-cli.git](https://github.com/gypsophila22/gemini-cli.git)
 cd gemini-cli
 npm install
 ```
@@ -51,65 +50,47 @@ cp .env.example .env
 # .env 파일을 열어 API_KEY=your_key_here 를 입력하세요.
 ```
 
-### 3. Global Command Registration
-
-터미널 어디서든 사용할 수 있도록 전역 명령어로 등록합니다.
+### 3. Build & Global Install
 
 ```bash
-# tsx 전역 설치 (권한 에러 발생 시 sudo 사용)
-npm install -g tsx
+# 빌드 실행 (dist/index.cjs 생성)
+npm run build
 
-# 프로젝트 연결
-npm link
+# 전역 설치 (어디서든 'ask' 명령어 사용 가능)
+npm install -g .
 ```
 
 ---
 
 ## 🚀 Usage
 
-명령어 뒤에 따옴표와 함께 질문을 입력하세요.
-
 ```bash
-ask "Node.js에서 Stream과 Buffer의 차이점을 설명해줘"
+# 일반 기술 질문
+ask "Node.js의 이벤트 루프와 워커 스레드의 차이점을 설명해줘"
+
+# 특정 파일 분석 및 리뷰
+ask "이 파일의 에러 핸들링 로직을 개선해줘" index.ts
+
+# 실시간 정보 기반 질문
+ask "현재 이란-이스라엘 분쟁의 최신 전황을 요약해줘"
 ```
-
-### Interaction Example
-
-- **1분 이내 재질문 시**: 불필요한 인사 없이 바로 핵심 답변을 제공합니다.
-- **오랜만에 질문 시**: 현재 시간을 인지하고 반가운 인사와 함께 답변을 시작합니다.
 
 ---
 
 ## 📂 Project Structure
 
-| 폴더/파일        | 역할                                    |
-| :--------------- | :-------------------------------------- |
-| `index.ts`       | CLI 메인 로직 및 Gemini API 통신 제어   |
-| `.last_run.json` | 마지막 실행 타임스탬프 저장 (로컬 전용) |
-| `.env`           | API Key 등 민감 정보 관리 (Git 제외)    |
-| `package.json`   | 프로젝트 메타데이터 및 의존성 정의      |
-
----
-
-## ⚠️ Troubleshooting
-
-### 1. Permission Denied
-
-`ask` 명령어 실행 시 권한 에러가 발생한다면 실행 권한을 부여하세요.
-
-```bash
-chmod +x index.ts
-```
-
-### 2. Unknown File Extension (.ts)
-
-`tsx`가 전역으로 설치되어 있는지 확인하세요. 이 도구는 `node` 대신 `tsx` 엔진을 사용합니다.
+| 폴더/파일        | 역할                                            |
+| :--------------- | :---------------------------------------------- |
+| `index.ts`       | 메인 로직 (History, Tool Use, Path 제어)        |
+| `dist/index.cjs` | `esbuild`로 빌드된 배포용 CJS 실행 파일         |
+| `.history.json`  | 대화 세션 기록 및 타임스탬프 저장소 (자동 생성) |
+| `.env`           | API Key 등 환경 변수 관리 (Git 제외)            |
 
 ---
 
 ## 👤 Author
 
-**[심하원 (Sim Ha-won)]**
+**심하원 (Shim Ha-won)**
 
 - Node.js Backend Developer
 - GitHub: [@gypsophila22](https://github.com/gypsophila22)
