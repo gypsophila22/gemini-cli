@@ -19,17 +19,9 @@ const getDirname = () => {
 const _dirname = getDirname();
 
 // 2. 외부에서 사용할 경로 설정
+export const ENV_PATH = path.join(_dirname, '..', '.env');
 export const HISTORY_FILE = path.join(_dirname, '..', '.history.json');
 const MAX_HISTORY = 100;
-
-// 3. getFilename 함수
-export const getFilename = (): string => {
-  try {
-    return fileURLToPath(import.meta.url);
-  } catch {
-    return __filename;
-  }
-};
 
 export async function loadHistory(file: string): Promise<HistoryData> {
   const defaultData: HistoryData = { lastTimestamp: Date.now(), history: [] };
